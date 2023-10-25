@@ -1,5 +1,4 @@
 import fetch from 'node-fetch';
-
 /**
  * NodeReplicate class for interacting with the Replicate API.
  */
@@ -17,8 +16,8 @@ class NodeReplicate {
     this.fetch = options.fetch || fetch;
     this.timeout = options.timeout || 250;
     this.maxRetries = options.maxRetries || 3;
+    this.apiKey = options.apiKey || null; // Support for API key
   }
-
   /**
    * Runs a model and waits for its output.
    * @param {string} model - The model identifier in the format "{path}:{version}".
@@ -28,15 +27,15 @@ class NodeReplicate {
   async run(model, inputs) {
     let prediction = await this.create(model, inputs);
     const validStatuses = ['canceled', 'succeeded', 'failed'];
-
     while (!validStatuses.includes(prediction.status)) {
       await this.delay(this.timeout);
       prediction = await this.get(prediction);
     }
-
+    if (prediction.status === 'failed') {
+      throw new Error(`Prediction failed: ${prediction.error}`);
+    }
     return prediction.output;
   }
-
   /**
    * Retrieves a prediction's details.
    * @param {Object} prediction - The prediction object.
@@ -48,7 +47,6 @@ class NodeReplicate {
     const data = await response.json();
     return data.prediction;
   }
-
   /**
    * Creates a new prediction.
    * @param {string} model - The model identifier in the format "{path}:{version}".
@@ -57,21 +55,23 @@ class NodeReplicate {
    */
   async create(model, inputs) {
     const [path, version] = model.split(':');
+    const url = `${this.baseUrl}/${path}/versions/${version}/predictions`;
     const options = {
-      hostname: 'replicate.com',
-      path: `/api/models/${path}/versions/${version}/predictions`,
       method: 'POST',
       headers: {
-        'content-type': 'application/json',
+        'Content-Type': 'application/json',
+        ...(this.apiKey ? {
+          'Authorization': `Bearer ${this.apiKey}`
+        } : {}),
       },
-      body: JSON.stringify({ inputs }),
+      body: JSON.stringify({
+        inputs
+      }),
     };
-
-    const response = await this.fetchWithRetry(`${this.baseUrl}/${path}/versions/${version}/predictions`, options);
+    const response = await this.fetchWithRetry(url, options);
     const data = await response.json();
     return data;
   }
-
   /**
    * Introduces a delay.
    * @param {number} ms - The number of milliseconds to delay.
@@ -79,25 +79,24 @@ class NodeReplicate {
    */
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-    }
-    /**
-    * Fetch with a retry mechanism for failed API requests.
-    * @param {string} url - The URL to fetch.
-    * @param {Object} [options] - Fetch options.
-    * @returns {Promise<Response>} - Resolves with the fetch response.
-    */
-    async fetchWithRetry(url, options = {}) {
+  }
+  /**
+   * Fetch with a retry mechanism for failed API requests.
+   * @param {string} url - The URL to fetch.
+   * @param {Object} [options] - Fetch options.
+   * @returns {Promise<Response>} - Resolves with the fetch response.
+   */
+  async fetchWithRetry(url, options = {}) {
     for (let i = 0; i < this.maxRetries; i++) {
-    try {
-    const response = await this.fetch(url, options);
-    if (response.ok) return response;
-    } catch (error) {
-    if (i === this.maxRetries - 1) throw error;
-    }
-    await this.delay(this.timeout);
+      try {
+        const response = await this.fetch(url, options);
+        if (response.ok) return response;
+      } catch (error) {
+        if (i === this.maxRetries - 1) throw error;
+      }
+      await this.delay(this.timeout);
     }
     throw new Error('Max retries reached for API request.');
   }
 }
-
 export default NodeReplicate;
