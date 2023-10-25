@@ -1,39 +1,44 @@
-import fetch from 'chiaki'
+import fetch from 'chiaki';
 
+const BASE_URL = 'https://replicate.com/api/models';
 
 export default {
-	run: async function(model, inputs) {
-		let prediction = await this.create(model, inputs)
+  async run(model, inputs) {
+    let prediction = await this.create(model, inputs);
 
-		while (! [
-			'canceled',
-			'succeeded',
-			'failed'
-		].includes(prediction.status)) {
-			await new Promise(_ => setTimeout(_, 250))
-			prediction = await this.get(prediction)
-		}
+    const validStatuses = ['canceled', 'succeeded', 'failed'];
 
-		return prediction.output
-	},
-	
-	get(prediction) {
-		return fetch(`https://replicate.com/api/models${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`)
-			.then(response => JSON.parse(response.body).prediction)
-	},
+    while (!validStatuses.includes(prediction.status)) {
+      await this.delay(250);
+      prediction = await this.get(prediction);
+    }
 
-	create(model, inputs) {
-		const [path, version] = model.split(':')
+    return prediction.output;
+  },
 
-		return fetch({
-			hostname: 'replicate.com',
-			path: `/api/models/${path}/versions/${version}/predictions`,
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-			},
-			body: JSON.stringify({ inputs }),
-		})
-		.then(response => JSON.parse(response.body))
-	}
-}
+  async get(prediction) {
+    const url = `${BASE_URL}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`;
+    const response = await fetch(url);
+    return JSON.parse(response.body).prediction;
+  },
+
+  async create(model, inputs) {
+    const [path, version] = model.split(':');
+    const options = {
+      hostname: 'replicate.com',
+      path: `/api/models/${path}/versions/${version}/predictions`,
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ inputs }),
+    };
+
+    const response = await fetch(options);
+    return JSON.parse(response.body);
+  },
+
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+};
