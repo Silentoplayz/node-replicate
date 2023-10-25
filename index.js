@@ -1,4 +1,4 @@
-import fetch from 'chiaki';
+import fetch from 'node-fetch';
 
 /**
  * NodeReplicate class for interacting with the Replicate API.
@@ -9,10 +9,14 @@ class NodeReplicate {
    * @param {Object} [options={}] - Configuration options.
    * @param {string} [options.baseUrl] - Base URL for the Replicate API.
    * @param {Function} [options.fetch] - Fetch function to use.
+   * @param {number} [options.timeout] - Custom timeout for the delay function in milliseconds.
+   * @param {number} [options.maxRetries] - Maximum number of retries for failed API requests.
    */
   constructor(options = {}) {
     this.baseUrl = options.baseUrl || 'https://replicate.com/api/models';
     this.fetch = options.fetch || fetch;
+    this.timeout = options.timeout || 250;
+    this.maxRetries = options.maxRetries || 3;
   }
 
   /**
@@ -26,7 +30,7 @@ class NodeReplicate {
     const validStatuses = ['canceled', 'succeeded', 'failed'];
 
     while (!validStatuses.includes(prediction.status)) {
-      await this.delay(250);
+      await this.delay(this.timeout);
       prediction = await this.get(prediction);
     }
 
@@ -41,7 +45,8 @@ class NodeReplicate {
   async get(prediction) {
     const url = `${this.baseUrl}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`;
     const response = await this.fetch(url);
-    return JSON.parse(response.body).prediction;
+    const data = await response.json();
+    return data.prediction;
   }
 
   /**
@@ -62,8 +67,9 @@ class NodeReplicate {
       body: JSON.stringify({ inputs }),
     };
 
-    const response = await this.fetch(options);
-    return JSON.parse(response.body);
+    const response = await this.fetch(`${this.baseUrl}/${path}/versions/${version}/predictions`, options);
+    const data = await response.json();
+    return data;
   }
 
   /**
@@ -73,6 +79,24 @@ class NodeReplicate {
    */
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    /**
+    * Fetch with a retry mechanism for failed API requests.
+    * @param {string} url - The URL to fetch.
+    * @param {Object} [options] - Fetch options.
+    * @returns {Promise<Response>} - Resolves with the fetch response.
+    */
+    async fetchWithRetry(url, options = {}) {
+    for (let i = 0; i < this.maxRetries; i++) {
+    try {
+    const response = await this.fetch(url, options);
+    if (response.ok) return response;
+    } catch (error) {
+    if (i === this.maxRetries - 1) throw error;
+    }
+    await this.delay(this.timeout);
+    }
+    throw new Error('Max retries reached for API request.');
   }
 }
 
