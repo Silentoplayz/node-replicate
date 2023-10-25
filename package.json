@@ -1,12 +1,12 @@
 {
   "name": "node-replicate",
-  "version": "2.0.0",
-  "description": "A Node.js client for Replicate.",
+  "version": "2.2.0",
+  "description": "A modernized Node.js client for Replicate's Anonymous API.",
   "type": "module",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oelin/node-replicate.git"
+    "url": "git+https://github.com/Silentoplayz/node-replicate.git"
   },
   "keywords": [
     "ai",
@@ -14,15 +14,17 @@
     "client",
     "midjourney",
     "replicate",
-    "stable-diffusion"
+    "stable-diffusion",
+    "sdxl"
   ],
-  "author": "oelin",
+  "author": "Silentoplayz",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/oelin/node-replicate/issues"
+    "url": "https://github.com/Silentoplayz/node-replicate/issues"
   },
-  "homepage": "https://github.com/oelin/node-replicate#readme",
+  "homepage": "https://github.com/Silentoplayz/node-replicate#readme",
   "dependencies": {
-    "chiaki": "^2.0.0"
+    "chiaki": "^2.0.0",
+    "node-fetch": "^3.1.0"
   }
 }
