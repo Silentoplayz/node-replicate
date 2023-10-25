@@ -1,11 +1,28 @@
 import fetch from 'chiaki';
 
-const BASE_URL = 'https://replicate.com/api/models';
+/**
+ * NodeReplicate class for interacting with the Replicate API.
+ */
+class NodeReplicate {
+  /**
+   * Constructs a new NodeReplicate instance.
+   * @param {Object} [options={}] - Configuration options.
+   * @param {string} [options.baseUrl] - Base URL for the Replicate API.
+   * @param {Function} [options.fetch] - Fetch function to use.
+   */
+  constructor(options = {}) {
+    this.baseUrl = options.baseUrl || 'https://replicate.com/api/models';
+    this.fetch = options.fetch || fetch;
+  }
 
-export default {
+  /**
+   * Runs a model and waits for its output.
+   * @param {string} model - The model identifier in the format "{path}:{version}".
+   * @param {Object} inputs - Model inputs.
+   * @returns {Promise<Object>} - Resolves with the output of running the model.
+   */
   async run(model, inputs) {
     let prediction = await this.create(model, inputs);
-
     const validStatuses = ['canceled', 'succeeded', 'failed'];
 
     while (!validStatuses.includes(prediction.status)) {
@@ -14,14 +31,25 @@ export default {
     }
 
     return prediction.output;
-  },
+  }
 
+  /**
+   * Retrieves a prediction's details.
+   * @param {Object} prediction - The prediction object.
+   * @returns {Promise<Object>} - Resolves with the prediction details.
+   */
   async get(prediction) {
-    const url = `${BASE_URL}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`;
-    const response = await fetch(url);
+    const url = `${this.baseUrl}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`;
+    const response = await this.fetch(url);
     return JSON.parse(response.body).prediction;
-  },
+  }
 
+  /**
+   * Creates a new prediction.
+   * @param {string} model - The model identifier in the format "{path}:{version}".
+   * @param {Object} inputs - Model inputs.
+   * @returns {Promise<Object>} - Resolves with the created prediction details.
+   */
   async create(model, inputs) {
     const [path, version] = model.split(':');
     const options = {
@@ -34,11 +62,18 @@ export default {
       body: JSON.stringify({ inputs }),
     };
 
-    const response = await fetch(options);
+    const response = await this.fetch(options);
     return JSON.parse(response.body);
-  },
+  }
 
+  /**
+   * Introduces a delay.
+   * @param {number} ms - The number of milliseconds to delay.
+   * @returns {Promise<void>} - Resolves after the specified delay.
+   */
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
-};
+}
+
+export default NodeReplicate;
