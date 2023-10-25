@@ -44,7 +44,7 @@ class NodeReplicate {
    */
   async get(prediction) {
     const url = `${this.baseUrl}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`;
-    const response = await this.fetch(url);
+    const response = await this.fetchWithRetry(url);
     const data = await response.json();
     return data.prediction;
   }
@@ -67,7 +67,7 @@ class NodeReplicate {
       body: JSON.stringify({ inputs }),
     };
 
-    const response = await this.fetch(`${this.baseUrl}/${path}/versions/${version}/predictions`, options);
+    const response = await this.fetchWithRetry(`${this.baseUrl}/${path}/versions/${version}/predictions`, options);
     const data = await response.json();
     return data;
   }
