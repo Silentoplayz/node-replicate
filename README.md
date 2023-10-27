@@ -14,7 +14,7 @@ const replicate = new NodeReplicate();
 await replicate.run(model, input);
 ```
 
-<img src='https://replicate.delivery/pbxt/f4nlztv3uz1iFC4AEf2wBYQGTezdVeysvtZUtwfsvZOJDN6AC/out-0.png' width='100%'>
+<img src='https://pbxt.replicate.delivery/fbxm5ZezYLte4o5MgoqtKzv7Bb2bB8eOkiUoTfhRXq196TDOC/out-0.png' width='100%'>
 
 ## Introduction
 
