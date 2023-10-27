@@ -10,6 +10,7 @@ class NodeReplicate {
    * @param {Function} [options.fetch] - Fetch function to use.
    * @param {number} [options.timeout] - Custom timeout for the delay function in milliseconds.
    * @param {number} [options.maxRetries] - Maximum number of retries for failed API requests.
+   * @param {string} [options.apiKey] - API key for authentication (Optional).
    */
   constructor(options = {}) {
     this.baseUrl = options.baseUrl || 'https://replicate.com/api/models';
@@ -43,7 +44,11 @@ class NodeReplicate {
    */
   async get(prediction) {
     const url = `${this.baseUrl}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}`;
+    console.log(`Fetching prediction details from URL: ${url}`); // Log the constructed URL
     const response = await this.fetchWithRetry(url);
+    if (!response.ok) {
+      throw new Error(`Failed to get prediction details: ${response.statusText}`);
+    }
     const data = await response.json();
     return data.prediction;
   }
@@ -56,7 +61,10 @@ class NodeReplicate {
   async create(model, inputs) {
     const [path, version] = model.split(':');
     const url = `${this.baseUrl}/${path}/versions/${version}/predictions`;
+    console.log(`Creating prediction with URL: ${url}`); // Log the constructed URL
     const options = {
+      hostname: 'replicate.com',
+      path: `/api/models/${path}/versions/${version}/predictions`,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -69,6 +77,9 @@ class NodeReplicate {
       }),
     };
     const response = await this.fetchWithRetry(url, options);
+    if (!response.ok) {
+      throw new Error(`Failed to create prediction: ${response.statusText}`);
+    }
     const data = await response.json();
     return data;
   }
@@ -91,12 +102,78 @@ class NodeReplicate {
       try {
         const response = await this.fetch(url, options);
         if (response.ok) return response;
+        // Log the response status and message for failed attempts
+        console.error(`Attempt ${i + 1}: ${response.status} - ${response.statusText}`);
+        // If it's the last attempt, throw a detailed error
+        if (i === this.maxRetries - 1) {
+          const responseBody = await response.text();
+          throw new Error(`Final attempt failed with status ${response.status}: ${responseBody}`);
+        }
       } catch (error) {
+        console.error(`Attempt ${i + 1}: ${error.message}`);
         if (i === this.maxRetries - 1) throw error;
       }
       await this.delay(this.timeout);
     }
     throw new Error('Max retries reached for API request.');
+  }
+  /**
+   * Lists all available models.
+   * @returns {Promise<Array<Object>>} - List of models.
+   * @throws {Error} If the request fails.
+   */
+  async listModels() {
+    const url = this.baseUrl;
+    const response = await this.fetchWithRetry(url);
+    if (!response.ok) {
+      throw new Error(`Failed to list models: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+  /**
+   * Retrieves metadata for a specific model.
+   * @param {string} modelPath - Path of the model.
+   * @returns {Promise<Object>} - Model metadata.
+   * @throws {Error} If the request fails.
+   */
+  async getModelMetadata(modelPath) {
+    const url = `${this.baseUrl}/${modelPath}`;
+    const response = await this.fetchWithRetry(url);
+    if (!response.ok) {
+      throw new Error(`Failed to get model metadata: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+  /**
+   * Cancels a prediction.
+   * @param {Object} prediction - Prediction object.
+   * @returns {Promise<Object>} - Response from the API.
+   * @throws {Error} If the request fails.
+   */
+  async cancelPrediction(prediction) {
+    const url = `${this.baseUrl}${prediction.version.model.absolute_url}/versions/${prediction.version_id}/predictions/${prediction.uuid}/cancel`;
+    const options = {
+      method: 'POST',
+      headers: {
+        ...(this.apiKey ? {
+          'Authorization': `Bearer ${this.apiKey}`
+        } : {}),
+      },
+    };
+    const response = await this.fetchWithRetry(url, options);
+    if (!response.ok) {
+      throw new Error(`Failed to cancel prediction: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+  /**
+   * Checks the status of a prediction.
+   * @param {Object} prediction - Prediction object.
+   * @returns {Promise<string>} - Status of the prediction.
+   */
+  async checkStatus(prediction) {
+    const details = await this.get(prediction);
+    return details.status;
   }
 }
 export default NodeReplicate;
