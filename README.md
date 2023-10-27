@@ -18,7 +18,7 @@ await replicate.run(model, input);
 
 ## Introduction
 
-[Replicate](https://replicate.com) is an online platform that allows users to run machine learning models with a few lines of code in the cloud, without needing to understand how machine learning works. This package provides a revamped client for Replicate's Anonymous API, enabling users to effortlessly run models like [Stable Diffusion](https://replicate.com/stability-ai/stable-diffusion), [Whisper](https://replicate.com/openai/whisper), and other advanced models with a more intuitive and modernized API.
+[Replicate](https://replicate.com) is an online platform that allows users to run machine learning models with a few lines of code in the cloud, without needing to understand how machine learning works. This package provides a revamped client for Replicate's Anonymous API, enabling users to effortlessly run models like [SDXL](https://replicate.com/stability-ai/sdxl), [Whisper](https://replicate.com/openai/whisper), and other advanced models with a more intuitive and modernized API.
 
 ## Features
 
